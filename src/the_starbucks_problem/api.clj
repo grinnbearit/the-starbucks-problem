@@ -12,17 +12,43 @@
        json/parse-string))
 
 
+(defn- directions-request
+  [origin destination]
+  (request "http://maps.googleapis.com/maps/api/directions/json"
+           {"origin" (str/join "," origin)
+            "destination" (str/join "," destination)
+            "alternatives" "true"
+            "units" "metric"}))
+
+
+(defn- starbucks-list-request
+  [top-left bottom-right & {:keys [limit offset]
+                            :or {limit 50 offset 0}}]
+  (request "http://api.v3.factual.com/t/places"
+           {"geo" (json/generate-string {"$within" {"$rect" [top-left bottom-right]}})
+            "filters" (json/generate-string {"name" {"$eq" "starbucks"}})
+            "select" "latitude,longitude"
+            "limit" limit
+            "offset" offset
+            "KEY" FACTUAL_KEY}))
+
+
+(defn- starbucks-count-request
+  [top-left bottom-right]
+  (request "http://api.v3.factual.com/t/places/facets"
+           {"select" "country"
+            "geo" (json/generate-string {"$within" {"$rect" [top-left bottom-right]}})
+            "filters" (json/generate-string {"name" {"$eq" "starbucks"}})
+            "KEY" FACTUAL_KEY}))
+
+
 (defn directions
   "returns a list of driving routes between origin and destination
 
   origin and destination should be 2 element vectors containing numeric latitude and longitude
   for more info, https://developers.google.com/maps/documentation/directions/"
   [origin destination]
-  (let [response (request "http://maps.googleapis.com/maps/api/directions/json"
-                          {"origin" (str/join "," origin)
-                           "destination" (str/join "," destination)
-                           "alternatives" "true"
-                           "units" "metric"})]
+  (let [response (directions-request origin destination)]
     (for [route (response "routes")]
       {:bounds {:top-left [(get-in route ["bounds" "northeast" "lat"])
                            (get-in route ["bounds" "southwest" "lng"])]
@@ -45,23 +71,10 @@
   top-left and bottom-right should be 2 element vectors containing numeric latitude and longitude
   for more info, http://developer.factual.com/api-docs/#Read"
   [top-left bottom-right]
-  (let [box (json/generate-string {"$within" {"$rect" [top-left bottom-right]}})
-        filters (json/generate-string {"name" {"$eq" "starbucks"}})]
-
-    (letfn [(fetch [& {:keys [limit offset row-count?]
-                       :or {limit 50 offset 0 row-count? false}}]
-              (request "http://api.v3.factual.com/t/places"
-                       {"geo" box
-                        "filters" filters
-                        "include_count" row-count?
-                        "select" "latitude,longitude"
-                        "limit" limit
-                        "offset" offset
-                        "KEY" FACTUAL_KEY}))]
-
-      (let [row-count (get-in (fetch :limit 0 :row-count? true)
-                              ["response" "total_row_count"])]
-        (for [offset (range 0 row-count 50)
-              :let [response (fetch :offset offset)]
-              shop (get-in response ["response" "data"])]
-          [(shop "latitude") (shop "longitude")])))))
+  (let [country-count (get-in (starbucks-count-request top-left bottom-right)
+                              ["response" "data" "country"])
+        row-count (reduce + (vals country-count))]
+    (for [offset (range 0 row-count 50)
+          :let [response (starbucks-list-request top-left bottom-right :offset offset)]
+          shop (get-in response ["response" "data"])]
+      [(shop "latitude") (shop "longitude")])))
