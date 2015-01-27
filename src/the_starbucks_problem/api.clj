@@ -27,7 +27,7 @@
   (request "http://api.v3.factual.com/t/places"
            {"geo" (json/generate-string {"$within" {"$rect" [top-left bottom-right]}})
             "filters" (json/generate-string {"name" {"$eq" "starbucks"}})
-            "select" "latitude,longitude"
+            "select" "latitude,longitude,address,region"
             "limit" limit
             "offset" offset
             "KEY" FACTUAL_KEY}))
@@ -62,7 +62,8 @@
                  :end [(get-in step ["end_location" "lat"])
                        (get-in step ["end_location" "lng"])]
                  :distance (get-in step ["distance" "value"])
-                 :duration (get-in step ["duration" "value"])})})))
+                 :duration (get-in step ["duration" "value"])
+                 :directions (step "html_instructions")})})))
 
 
 (defn starbucks
@@ -77,4 +78,6 @@
     (for [offset (range 0 row-count 50)
           :let [response (starbucks-list-request top-left bottom-right :offset offset)]
           shop (get-in response ["response" "data"])]
-      [(shop "latitude") (shop "longitude")])))
+      {:location [(shop "latitude") (shop "longitude")]
+       :address (shop "address")
+       :region (shop "region")})))
