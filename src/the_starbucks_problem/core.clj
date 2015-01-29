@@ -7,12 +7,12 @@
 (def LAX [33.9425 -118.4081])
 
 
-(defn starbucks-step
+(defn- starbucks-step
   [step locations]
   (filter #(passes? [(:start step) (:end step)] (:location %)) locations))
 
 
-(defn starbucks-route
+(defn- starbucks-route
   [route]
   (let [locations (api/starbucks (get-in route [:bounds :top-left])
                                  (get-in route [:bounds :bottom-right]))]
@@ -23,6 +23,8 @@
 
 
 (defn starbucks-probability
+  "Given an origin and destination ([lat, lng]), returns a probability
+of passing a starbucks along with a list of which starbucks are passed"
   [origin destination minutes]
   (let [all-routes (api/directions origin destination)
         valid-routes (for [route all-routes
