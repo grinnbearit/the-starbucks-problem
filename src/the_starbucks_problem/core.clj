@@ -8,29 +8,30 @@
 
 
 (defn- starbucks-step
-  [step locations]
-  (filter #(passes? [(:start step) (:end step)] (:location %)) locations))
+  [step points]
+  (letfn [(step-passes? [point]
+            (passes? [(:start step) (:end step)] (:location point)))]
+
+    (first (filter step-passes? points))))
 
 
 (defn- starbucks-route
   [route]
-  (let [locations (api/starbucks (get-in route [:bounds :top-left])
-                                 (get-in route [:bounds :bottom-right]))]
-    (for [step (:steps route)
-          :let [passed-bucks (starbucks-step step locations)]
-          :when (seq passed-bucks)]
-      (assoc step :starbucks passed-bucks))))
+  (let [points (api/starbucks (get-in route [:bounds :top-left])
+                              (get-in route [:bounds :bottom-right]))]
+    (some #(starbucks-step % points) (:steps route))))
 
 
 (defn starbucks-probability
   "Given an origin and destination ([lat, lng]), returns a probability
-of passing a starbucks along with a list of which starbucks are passed"
+  of passing a starbucks along with the first (if any?) starbucks passed
+  for each route"
   [origin destination minutes]
   (let [all-routes (api/directions origin destination)
-        valid-routes (for [route all-routes
+        passed-bucks (for [route all-routes
                            :when (<= (:duration route) (* minutes 60))
-                           :let [steps (starbucks-route route)]
-                           :when (seq steps)]
-                       (assoc route :starbucks steps))]
-    {:probability (/ (count valid-routes) (count all-routes))
-     :valid-routes valid-routes}))
+                           :let [bucks (starbucks-route route)]
+                           :when bucks]
+                       bucks)]
+    {:probability (/ (count passed-bucks) (count all-routes))
+     :starbucks passed-bucks}))

@@ -6,50 +6,62 @@
 
 
 (facts
- (#'the-starbucks-problem.core/starbucks-step {:start [0 0] :end [10 0]}
-                                              [{:location [2 0.5]}
-                                               {:location [2 -10]}])
- => [{:location [2 0.5]}]
+ (let [starbucks-step #'the-starbucks-problem.core/starbucks-step]
 
- (provided
-  (g/passes? [[0 0] [10 0]] [2 0.5]) => true
-  (g/passes? [[0 0] [10 0]] [2 -10]) => false))
+   (starbucks-step {:start [0 0] :end [10 0]} [{:location [2 0.5]}
+                                               {:location [2 -10]}])
+   => {:location [2 0.5]}
+
+   (provided
+    (g/passes? [[0 0] [10 0]] [2 0.5]) => true
+    (g/passes? [[0 0] [10 0]] [2 -10]) => false)
+
+
+   (starbucks-step {:start [0 0] :end [10 0]} [{:location [2 -10]}])
+   => nil
+
+   (provided
+    (g/passes? [[0 0] [10 0]] [2 -10]) => false)))
 
 
 (facts
- (#'the-starbucks-problem.core/starbucks-route {:bounds {:top-left [0 10]
-                                                         :bottom-right [10 0]}
-                                                :steps [{:start [0 0] :end [10 0]}
-                                                        {:start [10 0] :end [10 10]}]})
- => [{:start [0 0]
-      :end [10 0]
-      :starbucks [{:location [2 0.5]}]}]
+ (let [starbucks-route #'the-starbucks-problem.core/starbucks-route]
 
- (provided
-  (api/starbucks [0 10] [10 0])
-  => [{:location [2 0.5]}
-      {:location [2 -10]}]
+   (starbucks-route {:bounds {:top-left [0 10]
+                              :bottom-right [10 0]}
+                     :steps [{:start [0 0] :end [10 0]}
+                             {:start [10 0] :end [10 10]}]})
+   => {:location [2 0.5]}
 
-  (#'the-starbucks-problem.core/starbucks-step {:start [0 0] :end [10 0]}
-                                               [{:location [2 0.5]}
-                                                {:location [2 -10]}])
-  => [{:location [2 0.5]}]
+   (provided
+    (api/starbucks [0 10] [10 0])
+    => [{:location [2 0.5]}
+        {:location [2 -10]}]
 
-  (#'the-starbucks-problem.core/starbucks-step {:start [10 0] :end [10 10]}
-                                               [{:location [2 0.5]}
-                                                {:location [2 -10]}])
-  => []))
+    (#'the-starbucks-problem.core/starbucks-step {:start [0 0] :end [10 0]}
+                                                 [{:location [2 0.5]}
+                                                  {:location [2 -10]}])
+    => {:location [2 0.5]})
+
+
+   (starbucks-route {:bounds {:top-left [0 10]
+                              :bottom-right [10 0]}
+                     :steps [{:start [0 0] :end [10 0]}]})
+   => nil
+
+   (provided
+    (api/starbucks [0 10] [10 0])
+    => [{:location [2 -10]}]
+
+    (#'the-starbucks-problem.core/starbucks-step {:start [0 0] :end [10 0]}
+                                                 [{:location [2 -10]}])
+    => nil)))
 
 
 (facts
  (starbucks-probability [0 0] [10 10] 5)
- => {:probability 1/2
-     :valid-routes [{:bounds {:bottom-right [10 0]
-                              :top-left [0 10]}
-                     :duration 180
-                     :steps [{:start [0 0] :end [10 10]}]
-                     :starbucks [{:start [0 0] :end [10 0]
-                                  :starbucks [{:location [5 4]}]}]}]}
+ => {:probability 1/3
+     :starbucks [{:location [5 4]}]}
 
  (provided
   (api/directions [0 0] [10 10])
@@ -57,6 +69,11 @@
                 :bottom-right [10 0]}
        :duration 180
        :steps [{:start [0 0] :end [10 10]}]}
+      {:bounds {:top-left [0 10]
+                :bottom-right [10 0]}
+       :duration 200
+       :steps [{:start [0 0] :end [10 0]}
+               {:start [10 0] :end [10 10]}]}
       {:bounds {:top-left [0 10]
                 :bottom-right [10 0]}
        :duration 420
@@ -67,5 +84,11 @@
                                                           :bottom-right [10 0]}
                                                  :duration 180
                                                  :steps [{:start [0 0] :end [10 10]}]})
-  => [{:start [0 0] :end [10 0]
-       :starbucks [{:location [5 4]}]}]))
+  => {:location [5 4]}
+
+  (#'the-starbucks-problem.core/starbucks-route {:bounds {:top-left [0 10]
+                                                          :bottom-right [10 0]}
+                                                 :duration 200
+                                                 :steps [{:start [0 0] :end [10 0]}
+                                                         {:start [10 0] :end [10 10]}]})
+  => nil))
